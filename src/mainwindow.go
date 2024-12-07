@@ -16,6 +16,7 @@ type Parking struct {
 	freeSpotsRand     int
 	occupiedSpotsRand int
 	autoMode          chan string
+	operatingMode     bool
 }
 
 func (p *Parking) UpdateSpots() {
@@ -28,7 +29,7 @@ func mainwindow() {
 	w := a.NewWindow("Smart Parking")
 
 	initMQTTClient()
-	myParking := &Parking{}
+	myParking := &Parking{operatingMode: true}
 
 	// Создаем канал для получения данных из подписки
 	messageChannel := make(chan string)
@@ -45,13 +46,16 @@ func mainwindow() {
 	ticker := time.NewTicker(5 * time.Second)
 
 	// Горутина для обновления значений через каждые 5 секунд
+
 	go func() {
 		for {
-			<-ticker.C              // Ожидание тикера
-			myParking.UpdateSpots() // Обновление данных парковки
-			freeSpots.SetText("Свободные места: " + strconv.Itoa(myParking.freeSpotsRand))
-			occupiedSpots.SetText("Занятые места: " + strconv.Itoa(myParking.occupiedSpotsRand))
-			sendData(myParking.freeSpotsRand, myParking.occupiedSpotsRand)
+			if myParking.operatingMode {
+				<-ticker.C              // Ожидание тикера
+				myParking.UpdateSpots() // Обновление данных парковки
+				freeSpots.SetText("Свободные места: " + strconv.Itoa(myParking.freeSpotsRand))
+				occupiedSpots.SetText("Занятые места: " + strconv.Itoa(myParking.occupiedSpotsRand))
+				sendData(myParking.freeSpotsRand, myParking.occupiedSpotsRand)
+			}
 		}
 	}()
 
@@ -118,6 +122,7 @@ func mainwindow() {
 			freeSpots.Show()
 			occupiedSpots.Show()
 		}
+		myParking.operatingMode = true
 	}
 
 	closeButton.OnTapped = func() {
@@ -125,6 +130,7 @@ func mainwindow() {
 			freeSpots.Hide()
 			occupiedSpots.Hide()
 		}
+		myParking.operatingMode = false
 	}
 
 	go func() {
